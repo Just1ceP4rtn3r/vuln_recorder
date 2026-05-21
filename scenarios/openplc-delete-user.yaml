@@ -1,0 +1,50 @@
+name: "OpenPLC Delete User"
+description: "Demonstrates unauthorized user deletion in OpenPLC web interface"
+
+display:
+  width: 1920
+  height: 1080
+  color_depth: 24
+
+tmux:
+  session_name: "openplc-demo"
+  layout: "main-horizontal"
+  panes:
+    - name: "environment"
+    - name: "attacker"
+    - name: "victim"
+
+steps:
+  - pane: "environment"
+    command: "# === OpenPLC Unauthorized User Deletion ==="
+    wait: 2
+  - pane: "environment"
+    command: "# Setting up test environment..."
+    wait: 1
+  - pane: "environment"
+    command: "echo 'Environment ready'"
+    wait: 2
+  - pane: "attacker"
+    command: "# Attacker identifies the target..."
+    wait: 2
+  - pane: "attacker"
+    command: "echo 'Scanning target...'"
+    wait: 3
+  - pane: "victim"
+    command: "# Victim system status"
+    wait: 2
+  - pane: "victim"
+    command: "echo 'System running normally'"
+    wait: 2
+  - pane: "attacker"
+    command: "# Exploiting vulnerability..."
+    wait: 2
+  - pane: "attacker"
+    command: "echo 'Exploit executed'"
+    wait: 3
+  - pane: "victim"
+    command: "# User account deleted!"
+    wait: 2
+  - pane: "victim"
+    command: "echo 'User deleted successfully'"
+    wait: 3
