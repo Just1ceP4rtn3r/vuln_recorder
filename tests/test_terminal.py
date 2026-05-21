@@ -1,13 +1,22 @@
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 from vuln_recorder.terminal import TerminalOrchestrator
 
 
+def _mock_run_factory(stdout=""):
+    """Create mock subprocess.run returning returncode=0 and given stdout."""
+    def run_impl(*args, **kwargs):
+        result = MagicMock()
+        result.returncode = 0
+        result.stdout = stdout
+        return result
+    return run_impl
+
+
 @patch('vuln_recorder.terminal.time.sleep')
-@patch('vuln_recorder.terminal.subprocess.run')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2\n3"))
 @patch('vuln_recorder.terminal.subprocess.Popen')
 def test_create_session_starts_xterm_with_tmux(mock_popen, mock_run, mock_sleep):
     mock_popen.return_value = MagicMock()
-    mock_run.return_value = MagicMock()
 
     panes = [{'name': 'env'}, {'name': 'attacker'}, {'name': 'victim'}]
     term = TerminalOrchestrator(":99", "test-session", panes, "even-horizontal")
@@ -19,16 +28,17 @@ def test_create_session_starts_xterm_with_tmux(mock_popen, mock_run, mock_sleep)
     assert "-display" in xterm_cmd
     assert ":99" in xterm_cmd
     assert "tmux" in xterm_cmd
+    assert "-L" in xterm_cmd
+    assert "vr-test-session" in xterm_cmd
     assert "new-session" in xterm_cmd
     assert "test-session" in xterm_cmd
 
 
 @patch('vuln_recorder.terminal.time.sleep')
-@patch('vuln_recorder.terminal.subprocess.run')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2\n3"))
 @patch('vuln_recorder.terminal.subprocess.Popen')
 def test_create_session_splits_panes(mock_popen, mock_run, mock_sleep):
     mock_popen.return_value = MagicMock()
-    mock_run.return_value = MagicMock()
 
     panes = [{'name': 'env'}, {'name': 'attacker'}, {'name': 'victim'}]
     term = TerminalOrchestrator(":99", "test-session", panes, "custom")
@@ -39,11 +49,10 @@ def test_create_session_splits_panes(mock_popen, mock_run, mock_sleep):
 
 
 @patch('vuln_recorder.terminal.time.sleep')
-@patch('vuln_recorder.terminal.subprocess.run')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2"))
 @patch('vuln_recorder.terminal.subprocess.Popen')
 def test_create_session_applies_layout(mock_popen, mock_run, mock_sleep):
     mock_popen.return_value = MagicMock()
-    mock_run.return_value = MagicMock()
 
     panes = [{'name': 'a'}, {'name': 'b'}]
     term = TerminalOrchestrator(":99", "test-session", panes, "even-horizontal")
@@ -56,11 +65,10 @@ def test_create_session_applies_layout(mock_popen, mock_run, mock_sleep):
 
 
 @patch('vuln_recorder.terminal.time.sleep')
-@patch('vuln_recorder.terminal.subprocess.run')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2"))
 @patch('vuln_recorder.terminal.subprocess.Popen')
 def test_custom_layout_skips_select_layout(mock_popen, mock_run, mock_sleep):
     mock_popen.return_value = MagicMock()
-    mock_run.return_value = MagicMock()
 
     panes = [{'name': 'a'}, {'name': 'b'}]
     term = TerminalOrchestrator(":99", "test-session", panes, "custom")
@@ -71,40 +79,42 @@ def test_custom_layout_skips_select_layout(mock_popen, mock_run, mock_sleep):
 
 
 @patch('vuln_recorder.terminal.time.sleep')
-@patch('vuln_recorder.terminal.subprocess.run')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2\n3"))
 @patch('vuln_recorder.terminal.subprocess.Popen')
 def test_send_keys_targets_correct_pane(mock_popen, mock_run, mock_sleep):
     mock_popen.return_value = MagicMock()
-    mock_run.return_value = MagicMock()
 
     panes = [{'name': 'env'}, {'name': 'attacker'}, {'name': 'victim'}]
     term = TerminalOrchestrator(":99", "test-session", panes, "custom")
     term.create_session()
 
     mock_run.reset_mock()
+    mock_run.side_effect = _mock_run_factory(stdout="")
     term.send_keys("victim", "echo pwned")
 
     mock_run.assert_called_once_with(
-        ["tmux", "send-keys", "-t", "test-session:0.2", "echo pwned", "Enter"]
+        ["tmux", "-L", "vr-test-session", "send-keys",
+         "-t", "test-session.3", "echo pwned", "Enter"]
     )
 
 
 @patch('vuln_recorder.terminal.time.sleep')
-@patch('vuln_recorder.terminal.subprocess.run')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2"))
 @patch('vuln_recorder.terminal.subprocess.Popen')
 def test_send_keys_first_pane(mock_popen, mock_run, mock_sleep):
     mock_popen.return_value = MagicMock()
-    mock_run.return_value = MagicMock()
 
     panes = [{'name': 'env'}, {'name': 'attacker'}]
     term = TerminalOrchestrator(":99", "test-session", panes, "custom")
     term.create_session()
 
     mock_run.reset_mock()
+    mock_run.side_effect = _mock_run_factory(stdout="")
     term.send_keys("env", "whoami")
 
     mock_run.assert_called_once_with(
-        ["tmux", "send-keys", "-t", "test-session:0.0", "whoami", "Enter"]
+        ["tmux", "-L", "vr-test-session", "send-keys",
+         "-t", "test-session.1", "whoami", "Enter"]
     )
 
 
@@ -114,5 +124,5 @@ def test_destroy_session(mock_run):
     term = TerminalOrchestrator(":99", "test-session", [], "custom")
     term.destroy_session()
     mock_run.assert_called_once_with(
-        ["tmux", "kill-session", "-t", "test-session"]
+        ["tmux", "-L", "vr-test-session", "kill-session", "-t", "test-session"]
     )
