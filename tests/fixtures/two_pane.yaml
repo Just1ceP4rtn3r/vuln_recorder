@@ -1,0 +1,21 @@
+name: "Two Pane Test"
+description: "Smoke test with two panes horizontal split"
+
+display:
+  width: 800
+  height: 600
+
+tmux:
+  session_name: "smoke-two"
+  layout: "even-horizontal"
+  panes:
+    - name: "left"
+    - name: "right"
+
+steps:
+  - pane: "left"
+    command: "echo 'Left pane'"
+    wait: 1
+  - pane: "right"
+    command: "echo 'Right pane'"
+    wait: 1

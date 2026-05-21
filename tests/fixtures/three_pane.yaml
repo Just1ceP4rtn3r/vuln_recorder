@@ -1,0 +1,28 @@
+name: "Three Pane Test"
+description: "Smoke test with three panes main-horizontal layout"
+
+display:
+  width: 1024
+  height: 768
+
+tmux:
+  session_name: "smoke-three"
+  layout: "main-horizontal"
+  panes:
+    - name: "top"
+    - name: "bottom-left"
+    - name: "bottom-right"
+
+steps:
+  - pane: "top"
+    command: "# Top pane comment"
+    wait: 1
+  - pane: "top"
+    command: "echo 'Top'"
+    wait: 1
+  - pane: "bottom-left"
+    command: "echo 'Bottom Left'"
+    wait: 1
+  - pane: "bottom-right"
+    command: "echo 'Bottom Right'"
+    wait: 1

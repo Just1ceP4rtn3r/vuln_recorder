@@ -1,0 +1,29 @@
+name: "Custom Layout Test"
+description: "Smoke test with custom layout (auto-arrange)"
+
+display:
+  width: 640
+  height: 480
+
+tmux:
+  session_name: "smoke-custom"
+  layout: "custom"
+  panes:
+    - name: "a"
+    - name: "b"
+    - name: "c"
+    - name: "d"
+
+steps:
+  - pane: "a"
+    command: "echo 'Pane A'"
+    wait: 1
+  - pane: "b"
+    command: "echo 'Pane B'"
+    wait: 1
+  - pane: "c"
+    command: "echo 'Pane C'"
+    wait: 1
+  - pane: "d"
+    command: "echo 'Pane D'"
+    wait: 1

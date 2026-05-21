@@ -1,0 +1,23 @@
+name: "Single Pane Test"
+description: "Smoke test with a single pane"
+
+display:
+  width: 640
+  height: 480
+
+tmux:
+  session_name: "smoke-single"
+  layout: "custom"
+  panes:
+    - name: "shell"
+
+steps:
+  - pane: "shell"
+    command: "# === Smoke Test ==="
+    wait: 1
+  - pane: "shell"
+    command: "echo 'Hello from single pane'"
+    wait: 1
+  - pane: "shell"
+    command: "date"
+    wait: 1
