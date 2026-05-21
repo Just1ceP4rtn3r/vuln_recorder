@@ -63,12 +63,9 @@ tmux:
   session_name: "session 名称"
   layout: "custom"   # 布局类型
   panes:
-    - name: "environment"
-      position: "top-left"
+    - name: "environment"   # 窗格名称，steps 中引用
     - name: "attacker"
-      position: "top-right"
     - name: "victim"
-      position: "bottom"
 
 steps:
   - pane: "目标窗格名称"
@@ -90,12 +87,16 @@ steps:
 
 **tmux 部分**:
 - `session_name` (必填): tmux 会话名
-- `layout` (必填): 布局类型 (`custom`, `even-horizontal`, `even-vertical`, `main-horizontal`)
-- `panes` (必填): 窗格列表，每个窗格有 `name` 和 `position`
+- `layout` (必填): 布局类型，决定分屏方式：
+  - `even-horizontal`: 水平均分
+  - `even-vertical`: 垂直均分
+  - `main-horizontal`: 上方大窗格 + 下方均分小窗格（适合 env + attacker/victim 三窗格场景）
+  - `custom`: 按窗格数量均分，自动排列
+- `panes` (必填): 窗格列表，每个窗格有 `name`。窗格按列表顺序编号 0, 1, 2...，与 tmux pane index 对应
 
 **steps 部分**:
 - `pane` (必填): 目标窗格名称，必须与 tmux.panes 中的 name 匹配
-- `command` (必填): 要在窗格中执行的命令。以 `#` 开头的为注释行（显示但不执行）
+- `command` (必填): 要在窗格中执行的命令。以 `#` 开头的为注释行，会被 send-keys 发送到终端并按 Enter（作为注释在视频中显示），不会被 shell 执行
 - `wait` (必填): 命令执行后等待的秒数
 
 ## 项目结构
