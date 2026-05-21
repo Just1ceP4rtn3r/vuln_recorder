@@ -69,3 +69,53 @@ def test_is_recording_after_stop(mock_popen):
     recorder.stop()
     mock_process.poll.return_value = 0
     assert recorder.is_recording() is False
+
+
+@patch('vuln_recorder.recorder.subprocess.Popen')
+def test_custom_fps_in_command(mock_popen):
+    mock_popen.return_value = MagicMock()
+    recorder = Recorder(":99", "/tmp/test.mp4", "1920x1080", fps=60)
+    recorder.start()
+    cmd = mock_popen.call_args[0][0]
+    assert "60" in cmd
+
+
+@patch('vuln_recorder.recorder.subprocess.Popen')
+def test_stop_when_process_already_exited(mock_popen):
+    mock_process = MagicMock()
+    mock_process.poll.return_value = 0  # Already exited
+    mock_popen.return_value = mock_process
+    recorder = Recorder(":99", "/tmp/test.mp4", "1920x1080")
+    recorder.start()
+    recorder.stop()  # Should not try to write to stdin
+    mock_process.stdin.write.assert_not_called()
+
+
+@patch('vuln_recorder.recorder.subprocess.Popen')
+def test_double_start_replaces_process(mock_popen):
+    mock_popen.return_value = MagicMock()
+    recorder = Recorder(":99", "/tmp/test.mp4", "1920x1080")
+    recorder.start()
+    recorder.start()
+    assert mock_popen.call_count == 2
+
+
+@patch('vuln_recorder.recorder.subprocess.Popen')
+def test_output_path_in_command(mock_popen):
+    mock_popen.return_value = MagicMock()
+    recorder = Recorder(":99", "/data/videos/test.mp4", "1280x720")
+    recorder.start()
+    cmd = mock_popen.call_args[0][0]
+    assert "/data/videos/test.mp4" in cmd
+
+
+@patch('vuln_recorder.recorder.subprocess.Popen')
+def test_stdin_pipe_set(mock_popen):
+    mock_popen.return_value = MagicMock()
+    import subprocess
+    recorder = Recorder(":99", "/tmp/test.mp4", "1920x1080")
+    recorder.start()
+    kwargs = mock_popen.call_args[1]
+    assert kwargs['stdin'] == subprocess.PIPE
+    assert kwargs['stdout'] == subprocess.DEVNULL
+    assert kwargs['stderr'] == subprocess.DEVNULL

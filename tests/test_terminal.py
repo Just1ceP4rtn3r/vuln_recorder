@@ -126,3 +126,109 @@ def test_destroy_session(mock_run):
     mock_run.assert_called_once_with(
         ["tmux", "-L", "vr-test-session", "kill-session", "-t", "test-session"]
     )
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1"))
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_single_pane_no_splits(mock_popen, mock_run, mock_sleep):
+    mock_popen.return_value = MagicMock()
+
+    panes = [{'name': 'only'}]
+    term = TerminalOrchestrator(":99", "test-session", panes, "custom")
+    term.create_session()
+
+    split_calls = [c for c in mock_run.call_args_list if 'split-window' in str(c)]
+    assert len(split_calls) == 0
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2\n3\n4"))
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_four_panes_three_splits(mock_popen, mock_run, mock_sleep):
+    mock_popen.return_value = MagicMock()
+
+    panes = [{'name': 'a'}, {'name': 'b'}, {'name': 'c'}, {'name': 'd'}]
+    term = TerminalOrchestrator(":99", "test-session", panes, "custom")
+    term.create_session()
+
+    split_calls = [c for c in mock_run.call_args_list if 'split-window' in str(c)]
+    assert len(split_calls) == 3
+
+
+def test_send_keys_unknown_pane_raises():
+    term = TerminalOrchestrator(":99", "test-session", [{'name': 'a'}], "custom")
+    term._pane_map = {'a': 1}
+    import pytest
+    with pytest.raises(ValueError, match="Unknown pane: 'nonexistent'"):
+        term.send_keys("nonexistent", "echo")
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2"))
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_send_keys_comment_command(mock_popen, mock_run, mock_sleep):
+    mock_popen.return_value = MagicMock()
+
+    panes = [{'name': 'a'}, {'name': 'b'}]
+    term = TerminalOrchestrator(":99", "test-session", panes, "custom")
+    term.create_session()
+
+    mock_run.reset_mock()
+    mock_run.side_effect = _mock_run_factory(stdout="")
+    term.send_keys("a", "# === Vulnerability Demo ===")
+
+    mock_run.assert_called_once_with(
+        ["tmux", "-L", "vr-test-session", "send-keys",
+         "-t", "test-session.1", "# === Vulnerability Demo ===", "Enter"]
+    )
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1"))
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_send_keys_special_chars(mock_popen, mock_run, mock_sleep):
+    mock_popen.return_value = MagicMock()
+
+    panes = [{'name': 'a'}]
+    term = TerminalOrchestrator(":99", "test-session", panes, "custom")
+    term.create_session()
+
+    mock_run.reset_mock()
+    mock_run.side_effect = _mock_run_factory(stdout="")
+    term.send_keys("a", "echo 'hello world' | grep -i test")
+
+    mock_run.assert_called_once_with(
+        ["tmux", "-L", "vr-test-session", "send-keys",
+         "-t", "test-session.1", "echo 'hello world' | grep -i test", "Enter"]
+    )
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run')
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_create_session_timeout(mock_popen, mock_run, mock_sleep):
+    import pytest
+    mock_popen.return_value = MagicMock()
+
+    def run_never_ready(*args, **kwargs):
+        result = MagicMock()
+        result.returncode = 1  # has-session always fails
+        result.stdout = ""
+        return result
+    mock_run.side_effect = run_never_ready
+
+    panes = [{'name': 'a'}]
+    term = TerminalOrchestrator(":99", "test-session", panes, "custom")
+    with pytest.raises(RuntimeError, match="Timed out"):
+        term.create_session()
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2"))
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_socket_name_derived_from_session(mock_popen, mock_run, mock_sleep):
+    mock_popen.return_value = MagicMock()
+
+    term = TerminalOrchestrator(":99", "my-session", [{'name': 'a'}], "custom")
+    assert term._socket_name == "vr-my-session"

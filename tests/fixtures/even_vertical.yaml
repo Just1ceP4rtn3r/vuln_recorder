@@ -1,0 +1,21 @@
+name: "Even Vertical Test"
+description: "Smoke test with even-vertical layout"
+
+display:
+  width: 640
+  height: 480
+
+tmux:
+  session_name: "smoke-vert"
+  layout: "even-vertical"
+  panes:
+    - name: "top"
+    - name: "bottom"
+
+steps:
+  - pane: "top"
+    command: "echo 'Top pane'"
+    wait: 1
+  - pane: "bottom"
+    command: "echo 'Bottom pane'"
+    wait: 1

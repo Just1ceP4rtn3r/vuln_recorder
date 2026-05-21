@@ -76,3 +76,61 @@ def test_stop_idempotent(mock_exists, mock_popen, mock_sleep):
     xvfb.stop()
     xvfb.stop()  # Second call should be safe
     assert mock_process.send_signal.call_count == 1
+
+
+@patch('vuln_recorder.xvfb.time.sleep')
+@patch('vuln_recorder.xvfb.subprocess.Popen')
+@patch('vuln_recorder.xvfb.os.path.exists', return_value=False)
+def test_custom_color_depth(mock_exists, mock_popen, mock_sleep):
+    mock_popen.return_value = MagicMock()
+    xvfb = XvfbManager(color_depth=16)
+    xvfb.start()
+    cmd = mock_popen.call_args[0][0]
+    assert "x16" in cmd[-1] or "16" in " ".join(cmd)
+
+
+@patch('vuln_recorder.xvfb.time.sleep')
+@patch('vuln_recorder.xvfb.subprocess.Popen')
+@patch('vuln_recorder.xvfb.os.path.exists')
+def test_display_chain_increment(mock_exists, mock_popen, mock_sleep):
+    mock_exists.side_effect = lambda p: 'X99-lock' in p or 'X100-lock' in p or 'X101-lock' in p
+    mock_popen.return_value = MagicMock()
+    xvfb = XvfbManager(display=":99")
+    display = xvfb.start()
+    assert display == ":102"
+
+
+@patch('vuln_recorder.xvfb.time.sleep')
+@patch('vuln_recorder.xvfb.subprocess.Popen')
+@patch('vuln_recorder.xvfb.os.path.exists', return_value=True)
+def test_max_retries_exceeded(mock_exists, mock_popen, mock_sleep):
+    import pytest
+    xvfb = XvfbManager(display=":99")
+    with pytest.raises(RuntimeError, match="Could not find"):
+        xvfb.start()
+
+
+@patch('vuln_recorder.xvfb.time.sleep')
+@patch('vuln_recorder.xvfb.subprocess.Popen')
+@patch('vuln_recorder.xvfb.os.path.exists', return_value=False)
+def test_stop_when_process_already_dead(mock_exists, mock_popen, mock_sleep):
+    mock_process = MagicMock()
+    mock_process.poll.return_value = 1  # Process already exited
+    mock_popen.return_value = mock_process
+    xvfb = XvfbManager()
+    xvfb.start()
+    xvfb.stop()  # Should not send SIGTERM
+    mock_process.send_signal.assert_not_called()
+
+
+@patch('vuln_recorder.xvfb.time.sleep')
+@patch('vuln_recorder.xvfb.subprocess.Popen')
+@patch('vuln_recorder.xvfb.os.path.exists', return_value=False)
+def test_glx_and_render_flags(mock_exists, mock_popen, mock_sleep):
+    mock_popen.return_value = MagicMock()
+    xvfb = XvfbManager()
+    xvfb.start()
+    cmd = mock_popen.call_args[0][0]
+    assert "+extension" in cmd
+    assert "GLX" in cmd
+    assert "+render" in cmd

@@ -237,3 +237,235 @@ def test_all_scenarios_dir_load():
         data = s.load()
         assert "name" in data
         assert len(data["steps"]) > 0
+
+
+# ─── Real tmux pane/layout verification ────────────────────────────
+
+@requires_deps
+def test_tmux_pane_count_matches_scenario(tmp_path):
+    """After recording, verify tmux created the correct number of panes."""
+    from vuln_recorder.xvfb import XvfbManager
+    from vuln_recorder.terminal import TerminalOrchestrator
+
+    xvfb = XvfbManager(width=640, height=480)
+    display = xvfb.start()
+    try:
+        panes = [{'name': 'a'}, {'name': 'b'}, {'name': 'c'}]
+        term = TerminalOrchestrator(display, "smoke-panes", panes, "custom")
+        term.create_session()
+
+        r = subprocess.run(
+            ["tmux", "-L", "vr-smoke-panes", "list-panes",
+             "-t", "smoke-panes", "-F", "#{pane_index}"],
+            capture_output=True, text=True,
+        )
+        pane_count = len(r.stdout.strip().split('\n'))
+        assert pane_count == 3
+
+        term.destroy_session()
+    finally:
+        xvfb.stop()
+
+
+@requires_deps
+def test_tmux_main_horizontal_layout_structure(tmp_path):
+    """Verify main-horizontal layout: one large pane on top, smaller ones below."""
+    from vuln_recorder.xvfb import XvfbManager
+    from vuln_recorder.terminal import TerminalOrchestrator
+
+    xvfb = XvfbManager(width=640, height=480)
+    display = xvfb.start()
+    try:
+        panes = [{'name': 'env'}, {'name': 'attacker'}, {'name': 'victim'}]
+        term = TerminalOrchestrator(display, "smoke-lay", panes, "main-horizontal")
+        term.create_session()
+
+        r = subprocess.run(
+            ["tmux", "-L", "vr-smoke-lay", "list-panes",
+             "-t", "smoke-lay", "-F", "#{pane_height}"],
+            capture_output=True, text=True,
+        )
+        heights = [int(h) for h in r.stdout.strip().split('\n')]
+        assert len(heights) == 3
+        assert heights[0] > heights[1], "First pane should be taller in main-horizontal"
+
+        term.destroy_session()
+    finally:
+        xvfb.stop()
+
+
+@requires_deps
+def test_tmux_even_vertical_layout(tmp_path):
+    """Verify even-vertical layout produces panes with equal height."""
+    from vuln_recorder.xvfb import XvfbManager
+    from vuln_recorder.terminal import TerminalOrchestrator
+
+    xvfb = XvfbManager(width=640, height=480)
+    display = xvfb.start()
+    try:
+        panes = [{'name': 'top'}, {'name': 'bottom'}]
+        term = TerminalOrchestrator(display, "smoke-vert", panes, "even-vertical")
+        term.create_session()
+
+        r = subprocess.run(
+            ["tmux", "-L", "vr-smoke-vert", "list-panes",
+             "-t", "smoke-vert", "-F", "#{pane_height}"],
+            capture_output=True, text=True,
+        )
+        heights = [int(h) for h in r.stdout.strip().split('\n')]
+        assert len(heights) == 2
+        assert heights[0] == heights[1], "Panes should have equal height in even-vertical"
+
+        term.destroy_session()
+    finally:
+        xvfb.stop()
+
+
+@requires_deps
+def test_tmux_send_keys_executes_in_correct_pane(tmp_path):
+    """Verify commands go to the correct pane by writing unique markers."""
+    from vuln_recorder.xvfb import XvfbManager
+    from vuln_recorder.terminal import TerminalOrchestrator
+    import time
+
+    xvfb = XvfbManager(width=640, height=480)
+    display = xvfb.start()
+    try:
+        panes = [{'name': 'left'}, {'name': 'right'}]
+        term = TerminalOrchestrator(display, "smoke-keys", panes, "even-horizontal")
+        term.create_session()
+
+        term.send_keys("left", "echo MARKER_LEFT_123")
+        term.send_keys("right", "echo MARKER_RIGHT_456")
+        time.sleep(1)
+
+        r = subprocess.run(
+            ["tmux", "-L", "vr-smoke-keys", "capture-pane",
+             "-t", "smoke-keys.1", "-p"],
+            capture_output=True, text=True,
+        )
+        assert "MARKER_LEFT_123" in r.stdout
+
+        r = subprocess.run(
+            ["tmux", "-L", "vr-smoke-keys", "capture-pane",
+             "-t", "smoke-keys.2", "-p"],
+            capture_output=True, text=True,
+        )
+        assert "MARKER_RIGHT_456" in r.stdout
+
+        term.destroy_session()
+    finally:
+        xvfb.stop()
+
+
+@requires_deps
+def test_tmux_comment_line_sent_to_terminal(tmp_path):
+    """Verify # comment lines are sent to the terminal (visible but not executed)."""
+    from vuln_recorder.xvfb import XvfbManager
+    from vuln_recorder.terminal import TerminalOrchestrator
+    import time
+
+    xvfb = XvfbManager(width=640, height=480)
+    display = xvfb.start()
+    try:
+        panes = [{'name': 'a'}]
+        term = TerminalOrchestrator(display, "smoke-cmt", panes, "custom")
+        term.create_session()
+
+        term.send_keys("a", "# === Demo Comment Line ===")
+        time.sleep(0.5)
+
+        r = subprocess.run(
+            ["tmux", "-L", "vr-smoke-cmt", "capture-pane",
+             "-t", "smoke-cmt", "-p"],
+            capture_output=True, text=True,
+        )
+        assert "# === Demo Comment Line ===" in r.stdout
+
+        term.destroy_session()
+    finally:
+        xvfb.stop()
+
+
+@requires_deps
+def test_tmux_four_pane_custom_layout(tmp_path):
+    """Verify 4-pane custom layout creates 4 panes."""
+    from vuln_recorder.xvfb import XvfbManager
+    from vuln_recorder.terminal import TerminalOrchestrator
+
+    xvfb = XvfbManager(width=640, height=480)
+    display = xvfb.start()
+    try:
+        panes = [{'name': 'a'}, {'name': 'b'}, {'name': 'c'}, {'name': 'd'}]
+        term = TerminalOrchestrator(display, "smoke-4p", panes, "custom")
+        term.create_session()
+
+        r = subprocess.run(
+            ["tmux", "-L", "vr-smoke-4p", "list-panes",
+             "-t", "smoke-4p", "-F", "#{pane_index}"],
+            capture_output=True, text=True,
+        )
+        pane_count = len(r.stdout.strip().split('\n'))
+        assert pane_count == 4
+
+        term.destroy_session()
+    finally:
+        xvfb.stop()
+
+
+@requires_deps
+def test_recording_with_even_vertical_layout(tmp_path):
+    """Full recording pipeline with even-vertical layout."""
+    path = FIXTURES / "even_vertical.yaml"
+    output_dir = str(tmp_path / "out")
+
+    r = subprocess.run(
+        CLI + ["run", str(path), "--output", output_dir],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert r.returncode == 0
+    out_path = Path(r.stdout.split(":")[-1].strip())
+    assert (out_path / "recording.mp4").exists()
+
+    info = _ffprobe(out_path / "recording.mp4")
+    assert info["streams"][0]["codec_name"] == "h264"
+
+
+@requires_deps
+def test_display_auto_increment(tmp_path):
+    """Running two recordings simultaneously uses different displays."""
+    path = FIXTURES / "single_pane.yaml"
+    out_a = str(tmp_path / "a")
+    out_b = str(tmp_path / "b")
+
+    proc_a = subprocess.Popen(
+        CLI + ["run", str(path), "--output", out_a],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    proc_b = subprocess.Popen(
+        CLI + ["run", str(path), "--output", out_b],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+
+    stdout_a, stderr_a = proc_a.communicate(timeout=60)
+    stdout_b, stderr_b = proc_b.communicate(timeout=60)
+
+    assert proc_a.returncode == 0, f"Run A failed: {stderr_a.decode()}"
+    assert proc_b.returncode == 0, f"Run B failed: {stderr_b.decode()}"
+
+
+@requires_deps
+def test_xvfb_no_stale_lock_after_run(tmp_path):
+    """Xvfb lock file should be cleaned up after a successful run."""
+    path = FIXTURES / "single_pane.yaml"
+    output_dir = str(tmp_path / "out")
+
+    r = subprocess.run(
+        CLI + ["run", str(path), "--output", output_dir],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert r.returncode == 0
+
+    import os
+    lock = "/tmp/.X99-lock"
+    assert not os.path.exists(lock), "Xvfb lock file should be removed after stop"
