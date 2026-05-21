@@ -150,3 +150,11 @@ def test_load_default_color_depth(tmp_path):
     s = Scenario(str(yaml_file))
     result = s.load()
     assert result['display'].get('color_depth', 24) == 24
+
+
+def test_load_empty_yaml(tmp_path):
+    yaml_file = tmp_path / 'empty.yaml'
+    yaml_file.write_text('')
+    s = Scenario(str(yaml_file))
+    with pytest.raises(ValueError, match="empty"):
+        s.load()
