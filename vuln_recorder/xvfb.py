@@ -1,0 +1,41 @@
+import os
+import signal
+import subprocess
+import time
+
+
+class XvfbManager:
+    def __init__(self, display=":99", width=1920, height=1080, color_depth=24):
+        self.display = display
+        self.width = width
+        self.height = height
+        self.color_depth = color_depth
+        self._process = None
+
+    def start(self) -> str:
+        display_num = int(self.display.lstrip(':'))
+        while True:
+            lock_file = f"/tmp/.X{display_num}-lock"
+            if os.path.exists(lock_file):
+                display_num += 1
+                continue
+            break
+
+        self.display = f":{display_num}"
+        cmd = [
+            "Xvfb", self.display,
+            "-screen", "0", f"{self.width}x{self.height}x{self.color_depth}",
+            "-ac", "+extension", "GLX", "+render", "-noreset",
+        ]
+        self._process = subprocess.Popen(cmd)
+        time.sleep(0.5)
+        return self.display
+
+    def stop(self):
+        if self._process and self._process.poll() is None:
+            self._process.send_signal(signal.SIGTERM)
+            self._process.wait()
+        self._process = None
+
+    def get_display(self) -> str:
+        return self.display
