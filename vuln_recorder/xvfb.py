@@ -14,12 +14,14 @@ class XvfbManager:
 
     def start(self) -> str:
         display_num = int(self.display.lstrip(':'))
-        while True:
+        for _ in range(100):
             lock_file = f"/tmp/.X{display_num}-lock"
             if os.path.exists(lock_file):
                 display_num += 1
                 continue
             break
+        else:
+            raise RuntimeError("Could not find an available display after 100 attempts")
 
         self.display = f":{display_num}"
         cmd = [

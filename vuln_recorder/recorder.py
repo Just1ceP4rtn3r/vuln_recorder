@@ -33,6 +33,7 @@ class Recorder:
             self._process.stdin.write(b'q')
             self._process.stdin.flush()
             self._process.wait()
+        self._process = None
 
     def is_recording(self) -> bool:
         return self._process is not None and self._process.poll() is None

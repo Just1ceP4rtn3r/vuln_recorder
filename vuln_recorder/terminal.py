@@ -13,7 +13,7 @@ class TerminalOrchestrator:
     def create_session(self):
         subprocess.Popen([
             "xterm", "-display", self.display,
-            "-e", f"tmux new-session -s {self.session_name}",
+            "-e", "tmux", "new-session", "-s", self.session_name,
         ])
         time.sleep(0.5)
 
@@ -32,6 +32,8 @@ class TerminalOrchestrator:
             self._pane_map[pane['name']] = i
 
     def send_keys(self, pane_name: str, command: str):
+        if pane_name not in self._pane_map:
+            raise ValueError(f"Unknown pane: '{pane_name}'. Available: {list(self._pane_map.keys())}")
         pane_index = self._pane_map[pane_name]
         subprocess.run([
             "tmux", "send-keys",

@@ -18,6 +18,9 @@ def test_create_session_starts_xterm_with_tmux(mock_popen, mock_run, mock_sleep)
     assert xterm_cmd[0] == "xterm"
     assert "-display" in xterm_cmd
     assert ":99" in xterm_cmd
+    assert "tmux" in xterm_cmd
+    assert "new-session" in xterm_cmd
+    assert "test-session" in xterm_cmd
 
 
 @patch('vuln_recorder.terminal.time.sleep')

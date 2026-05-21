@@ -10,7 +10,7 @@ from .terminal import TerminalOrchestrator
 
 
 class Engine:
-    def __init__(self, scenario_path: str, output_dir: str = "output", **kwargs):
+    def __init__(self, scenario_path: str, output_dir: str = "output"):
         self.scenario_path = scenario_path
         self.output_dir = Path(output_dir)
         self.xvfb = None
@@ -38,25 +38,29 @@ class Engine:
         display = self.xvfb.start()
         atexit.register(self.cleanup)
 
-        resolution = f"{display_cfg['width']}x{display_cfg['height']}"
-        output_path = str(run_dir / "recording.mp4")
-        self.recorder = Recorder(display, output_path, resolution)
-        self.recorder.start()
-        time.sleep(1)
+        try:
+            resolution = f"{display_cfg['width']}x{display_cfg['height']}"
+            output_path = str(run_dir / "recording.mp4")
+            self.recorder = Recorder(display, output_path, resolution)
+            self.recorder.start()
+            time.sleep(1)
 
-        tmux_cfg = data['tmux']
-        self.terminal = TerminalOrchestrator(
-            display, tmux_cfg['session_name'],
-            tmux_cfg['panes'], tmux_cfg['layout'],
-        )
-        self.terminal.create_session()
+            tmux_cfg = data['tmux']
+            self.terminal = TerminalOrchestrator(
+                display, tmux_cfg['session_name'],
+                tmux_cfg['panes'], tmux_cfg['layout'],
+            )
+            self.terminal.create_session()
 
-        for step in data['steps']:
-            self.terminal.send_keys(step['pane'], step['command'])
-            time.sleep(step['wait'])
+            for step in data['steps']:
+                self.terminal.send_keys(step['pane'], step['command'])
+                time.sleep(step['wait'])
 
-        self.recorder.stop()
-        self.xvfb.stop()
+            self.recorder.stop()
+            self.xvfb.stop()
+        except Exception:
+            self.cleanup()
+            raise
 
         return str(run_dir)
 
