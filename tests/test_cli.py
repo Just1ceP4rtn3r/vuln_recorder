@@ -6,29 +6,18 @@ from vuln_recorder.cli import main
 
 
 @patch('vuln_recorder.cli.Engine')
-def test_run_command(mock_engine_cls, capsys):
+def test_run_command(mock_engine_cls, capsys, tmp_path):
     mock_engine = MagicMock()
-    mock_engine.run.return_value = "/tmp/output/test"
+    mock_engine.run.return_value = str(tmp_path / "record")
     mock_engine_cls.return_value = mock_engine
 
-    with patch('sys.argv', ['vuln_recorder', 'run', 'test.yaml']):
+    scenario_path = str(tmp_path / "test.yaml")
+    with patch('sys.argv', ['vuln_recorder', 'run', scenario_path]):
         main()
 
-    mock_engine_cls.assert_called_with('test.yaml', 'output')
+    mock_engine_cls.assert_called_with(scenario_path)
     captured = capsys.readouterr()
-    assert '/tmp/output/test' in captured.out
-
-
-@patch('vuln_recorder.cli.Engine')
-def test_run_command_with_output_dir(mock_engine_cls, capsys):
-    mock_engine = MagicMock()
-    mock_engine.run.return_value = "/custom/output/test"
-    mock_engine_cls.return_value = mock_engine
-
-    with patch('sys.argv', ['vuln_recorder', 'run', 'test.yaml', '--output', '/custom/output']):
-        main()
-
-    mock_engine_cls.assert_called_with('test.yaml', '/custom/output')
+    assert 'record' in captured.out
 
 
 @patch('vuln_recorder.cli.Scenario')
@@ -109,28 +98,17 @@ def test_check_missing_stderr_output(mock_engine_cls):
 
 
 @patch('vuln_recorder.cli.Engine')
-def test_run_prints_output_path(mock_engine_cls, capsys):
+def test_run_prints_output_path(mock_engine_cls, capsys, tmp_path):
     mock_engine = MagicMock()
-    mock_engine.run.return_value = "/home/user/output/test-vuln"
+    mock_engine.run.return_value = str(tmp_path / "record")
     mock_engine_cls.return_value = mock_engine
 
-    with patch('sys.argv', ['vuln_recorder', 'run', 'test.yaml']):
+    scenario_path = str(tmp_path / "scenario.yaml")
+    with patch('sys.argv', ['vuln_recorder', 'run', scenario_path]):
         main()
 
     captured = capsys.readouterr()
-    assert '/home/user/output/test-vuln' in captured.out
-
-
-@patch('vuln_recorder.cli.Engine')
-def test_run_with_default_output_dir(mock_engine_cls):
-    mock_engine = MagicMock()
-    mock_engine.run.return_value = "output/test"
-    mock_engine_cls.return_value = mock_engine
-
-    with patch('sys.argv', ['vuln_recorder', 'run', 'scenario.yaml']):
-        main()
-
-    mock_engine_cls.assert_called_with('scenario.yaml', 'output')
+    assert 'record' in captured.out
 
 
 @patch('vuln_recorder.cli.Engine')
@@ -143,3 +121,22 @@ def test_check_success_no_stderr(mock_engine_cls, capsys):
 
     captured = capsys.readouterr()
     assert captured.err == ""
+
+
+@patch('vuln_recorder.cli.Engine')
+def test_run_prints_outputs_yaml(mock_engine_cls, capsys, tmp_path):
+    outputs_file = tmp_path / "record" / "scenario-outputs.yaml"
+    outputs_file.parent.mkdir(parents=True)
+    outputs_file.write_text("scenario: Test\nsteps: []\n")
+
+    mock_engine = MagicMock()
+    mock_engine.run.return_value = str(tmp_path / "record")
+    mock_engine_cls.return_value = mock_engine
+
+    with patch('sys.argv', ['vuln_recorder', 'run', str(tmp_path / "scenario.yaml")]):
+        main()
+
+    mock_engine_cls.assert_called_with(str(tmp_path / "scenario.yaml"))
+    captured = capsys.readouterr()
+    assert 'scenario: Test' in captured.out
+    assert 'steps: []' in captured.out

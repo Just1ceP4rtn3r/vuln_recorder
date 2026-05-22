@@ -1,5 +1,6 @@
 import argparse
 import sys
+from pathlib import Path
 
 from .engine import Engine
 from .scenario import Scenario
@@ -14,7 +15,6 @@ def main():
 
     run_parser = subparsers.add_parser('run', help='Run a scenario')
     run_parser.add_argument('scenario', help='Path to scenario YAML file')
-    run_parser.add_argument('--output', '-o', default='output', help='Output directory')
     run_parser.add_argument('--dry-run', action='store_true', help='Parse only, do not execute')
 
     subparsers.add_parser('check', help='Check dependencies')
@@ -30,12 +30,17 @@ def main():
             print("Dry run completed successfully.")
             return
 
-        engine = Engine(args.scenario, args.output)
-        output = engine.run()
-        print(f"Recording saved to: {output}")
+        engine = Engine(args.scenario)
+        output_dir = engine.run()
+        print(f"Recording saved to: {output_dir}")
+
+        outputs_file = Path(output_dir) / "scenario-outputs.yaml"
+        if outputs_file.exists():
+            print()
+            print(outputs_file.read_text())
 
     elif args.command == 'check':
-        engine = Engine('', 'output')
+        engine = Engine('')
         try:
             engine.check_dependencies()
             print("All dependencies are installed.")
