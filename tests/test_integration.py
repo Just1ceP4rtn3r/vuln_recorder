@@ -4,12 +4,13 @@ from vuln_recorder.scenario import Scenario
 from vuln_recorder.engine import Engine
 
 
+EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 SCENARIOS_DIR = Path(__file__).parent.parent / "scenarios"
 
 
 def test_example_scenario_loads():
     """The example scenario YAML should load and validate successfully."""
-    scenario_path = SCENARIOS_DIR / "openplc-delete-user.yaml"
+    scenario_path = EXAMPLES_DIR / "openplc-delete-user.yaml"
     assert scenario_path.exists(), f"Scenario file not found: {scenario_path}"
 
     s = Scenario(str(scenario_path))
@@ -26,7 +27,7 @@ def test_example_scenario_loads():
 
 def test_dry_run_on_example(capsys):
     """Dry-run the example scenario through the Engine dependency check."""
-    scenario_path = SCENARIOS_DIR / "openplc-delete-user.yaml"
+    scenario_path = EXAMPLES_DIR / "openplc-delete-user.yaml"
     s = Scenario(str(scenario_path))
     data = s.load()
     assert 'name' in data
@@ -34,14 +35,14 @@ def test_dry_run_on_example(capsys):
 
 
 def test_all_scenarios_are_valid():
-    """Every YAML file in scenarios/ should pass validation."""
-    scenarios_dir = SCENARIOS_DIR
-    if not scenarios_dir.exists():
-        return
+    """Every YAML file in scenarios/ and examples/ should pass validation."""
+    for scenarios_dir in [SCENARIOS_DIR, EXAMPLES_DIR]:
+        if not scenarios_dir.exists():
+            continue
 
-    for yaml_file in scenarios_dir.glob("*.yaml"):
-        s = Scenario(str(yaml_file))
-        data = s.load()
-        assert 'name' in data, f"{yaml_file.name}: missing name"
-        assert 'steps' in data, f"{yaml_file.name}: missing steps"
-        assert len(data['steps']) > 0, f"{yaml_file.name}: no steps defined"
+        for yaml_file in scenarios_dir.glob("*.yaml"):
+            s = Scenario(str(yaml_file))
+            data = s.load()
+            assert 'name' in data, f"{yaml_file.name}: missing name"
+            assert 'steps' in data, f"{yaml_file.name}: missing steps"
+            assert len(data['steps']) > 0, f"{yaml_file.name}: no steps defined"

@@ -13,6 +13,7 @@ import pytest
 ROOT_DIR = Path(__file__).parent.parent
 FIXTURES = ROOT_DIR / "tests" / "fixtures"
 SCENARIOS = ROOT_DIR / "scenarios"
+EXAMPLES = ROOT_DIR / "examples"
 CLI = ["/usr/bin/env", "python3", "-m", "vuln_recorder"]
 
 
@@ -29,13 +30,21 @@ def _ffprobe(path):
     return json.loads(r.stdout)
 
 
+def _parse_output_path(stdout: str) -> Path:
+    """Extract the output directory from 'Recording saved to: <path>' line."""
+    for line in stdout.splitlines():
+        if line.startswith("Recording saved to:"):
+            return Path(line.split(":", 1)[1].strip())
+    raise ValueError(f"Could not find 'Recording saved to:' in stdout:\n{stdout}")
+
+
 requires_deps = pytest.mark.skipif(
     not _deps_available(),
     reason="System dependencies (Xvfb, ffmpeg, xterm, tmux) not available",
 )
 
 
-# ─── CLI smoke tests ────────────────────────────────────────────────
+# --- CLI smoke tests -------------------------------------------------------
 
 @requires_deps
 def test_cli_check():
@@ -68,13 +77,20 @@ def test_cli_no_args_shows_help():
     "openplc-delete-user.yaml",
 ])
 def test_cli_dry_run(scenario_file):
-    path = FIXTURES / scenario_file if (FIXTURES / scenario_file).exists() else SCENARIOS / scenario_file
+    # Search in fixtures/, then examples/, then scenarios/
+    candidates = [
+        FIXTURES / scenario_file,
+        EXAMPLES / scenario_file,
+        SCENARIOS / scenario_file,
+    ]
+    path = next((c for c in candidates if c.exists()), None)
+    assert path is not None, f"Scenario file not found: {scenario_file}"
     r = subprocess.run(CLI + ["run", str(path), "--dry-run"], capture_output=True, text=True)
     assert r.returncode == 0
     assert "Dry run" in r.stdout
 
 
-# ─── Full pipeline smoke tests ──────────────────────────────────────
+# --- Full pipeline smoke tests ---------------------------------------------
 
 @requires_deps
 @pytest.mark.parametrize("scenario_file,expected_width,expected_height", [
@@ -85,17 +101,16 @@ def test_cli_dry_run(scenario_file):
 ])
 def test_full_recording(tmp_path, scenario_file, expected_width, expected_height):
     path = FIXTURES / scenario_file
-    output_dir = str(tmp_path / "out")
 
     r = subprocess.run(
-        CLI + ["run", str(path), "--output", output_dir],
+        CLI + ["run", str(path)],
         capture_output=True, text=True, timeout=60,
     )
     assert r.returncode == 0, f"Run failed:\nstdout: {r.stdout}\nstderr: {r.stderr}"
     assert "Recording saved to" in r.stdout
 
     # Verify output directory structure
-    out_path = Path(r.stdout.split(":")[-1].strip())
+    out_path = _parse_output_path(r.stdout)
     assert (out_path / "recording.mp4").exists()
     assert (out_path / "scenario.yaml").exists()
 
@@ -113,16 +128,15 @@ def test_full_recording(tmp_path, scenario_file, expected_width, expected_height
 
 @requires_deps
 def test_example_scenario_recording(tmp_path):
-    path = SCENARIOS / "openplc-delete-user.yaml"
-    output_dir = str(tmp_path / "out")
+    path = EXAMPLES / "openplc-delete-user.yaml"
 
     r = subprocess.run(
-        CLI + ["run", str(path), "--output", output_dir],
+        CLI + ["run", str(path)],
         capture_output=True, text=True, timeout=120,
     )
     assert r.returncode == 0, f"Run failed:\nstdout: {r.stdout}\nstderr: {r.stderr}"
 
-    out_path = Path(r.stdout.split(":")[-1].strip())
+    out_path = _parse_output_path(r.stdout)
     assert (out_path / "recording.mp4").exists()
 
     info = _ffprobe(out_path / "recording.mp4")
@@ -132,20 +146,19 @@ def test_example_scenario_recording(tmp_path):
     assert int(video["height"]) == 1080
 
 
-# ─── Video content validation ───────────────────────────────────────
+# --- Video content validation -----------------------------------------------
 
 @requires_deps
 def test_video_has_playable_duration(tmp_path):
     path = FIXTURES / "single_pane.yaml"
-    output_dir = str(tmp_path / "out")
 
     r = subprocess.run(
-        CLI + ["run", str(path), "--output", output_dir],
+        CLI + ["run", str(path)],
         capture_output=True, text=True, timeout=60,
     )
     assert r.returncode == 0
 
-    out_path = Path(r.stdout.split(":")[-1].strip())
+    out_path = _parse_output_path(r.stdout)
     info = _ffprobe(out_path / "recording.mp4")
     video = info["streams"][0]
     duration = float(video.get("duration", 0))
@@ -158,66 +171,62 @@ def test_video_has_playable_duration(tmp_path):
 @requires_deps
 def test_video_file_size_reasonable(tmp_path):
     path = FIXTURES / "single_pane.yaml"
-    output_dir = str(tmp_path / "out")
 
     r = subprocess.run(
-        CLI + ["run", str(path), "--output", output_dir],
+        CLI + ["run", str(path)],
         capture_output=True, text=True, timeout=60,
     )
     assert r.returncode == 0
 
-    out_path = Path(r.stdout.split(":")[-1].strip())
+    out_path = _parse_output_path(r.stdout)
     mp4_size = (out_path / "recording.mp4").stat().st_size
     assert mp4_size > 1000, f"MP4 file too small: {mp4_size} bytes"
     assert mp4_size < 10_000_000, f"MP4 file suspiciously large: {mp4_size} bytes"
 
 
-# ─── Scenario copy validation ───────────────────────────────────────
+# --- Scenario copy validation -----------------------------------------------
 
 @requires_deps
 def test_scenario_copied_to_output(tmp_path):
     path = FIXTURES / "two_pane.yaml"
-    output_dir = str(tmp_path / "out")
 
     r = subprocess.run(
-        CLI + ["run", str(path), "--output", output_dir],
+        CLI + ["run", str(path)],
         capture_output=True, text=True, timeout=60,
     )
     assert r.returncode == 0
 
-    out_path = Path(r.stdout.split(":")[-1].strip())
+    out_path = _parse_output_path(r.stdout)
     copied = out_path / "scenario.yaml"
     assert copied.exists()
     assert copied.read_text() == path.read_text()
 
 
-# ─── Sequential runs (no stale state) ───────────────────────────────
+# --- Sequential runs (no stale state) --------------------------------------
 
 @requires_deps
 def test_two_runs_back_to_back(tmp_path):
     path = FIXTURES / "single_pane.yaml"
-    output_a = str(tmp_path / "run_a")
-    output_b = str(tmp_path / "run_b")
 
     r1 = subprocess.run(
-        CLI + ["run", str(path), "--output", output_a],
+        CLI + ["run", str(path)],
         capture_output=True, text=True, timeout=60,
     )
     assert r1.returncode == 0
 
     r2 = subprocess.run(
-        CLI + ["run", str(path), "--output", output_b],
+        CLI + ["run", str(path)],
         capture_output=True, text=True, timeout=60,
     )
     assert r2.returncode == 0
 
-    out_a = Path(r1.stdout.split(":")[-1].strip())
-    out_b = Path(r2.stdout.split(":")[-1].strip())
-    assert (out_a / "recording.mp4").exists()
-    assert (out_b / "recording.mp4").exists()
+    # Both runs output to the same record/ dir (under the scenario's parent),
+    # so the second run overwrites the first. Just verify a valid recording exists.
+    out_path = _parse_output_path(r2.stdout)
+    assert (out_path / "recording.mp4").exists()
 
 
-# ─── Scenario validation smoke tests ────────────────────────────────
+# --- Scenario validation smoke tests ----------------------------------------
 
 def test_all_fixture_scenarios_load():
     """Every fixture YAML must parse and validate without error."""
@@ -230,9 +239,9 @@ def test_all_fixture_scenarios_load():
 
 
 def test_all_scenarios_dir_load():
-    """Every YAML in scenarios/ must parse and validate."""
+    """Every YAML in examples/ must parse and validate."""
     from vuln_recorder.scenario import Scenario
-    for yaml_file in SCENARIOS.glob("*.yaml"):
+    for yaml_file in EXAMPLES.glob("*.yaml"):
         s = Scenario(str(yaml_file))
         data = s.load()
         assert "name" in data
@@ -241,7 +250,7 @@ def test_all_scenarios_dir_load():
         assert data["display"]["height"] == 1080
 
 
-# ─── Real tmux pane/layout verification ────────────────────────────
+# --- Real tmux pane/layout verification ------------------------------------
 
 @requires_deps
 def test_tmux_pane_count_matches_scenario(tmp_path):
@@ -419,14 +428,13 @@ def test_tmux_four_pane_custom_layout(tmp_path):
 def test_recording_with_even_vertical_layout(tmp_path):
     """Full recording pipeline with even-vertical layout."""
     path = FIXTURES / "even_vertical.yaml"
-    output_dir = str(tmp_path / "out")
 
     r = subprocess.run(
-        CLI + ["run", str(path), "--output", output_dir],
+        CLI + ["run", str(path)],
         capture_output=True, text=True, timeout=60,
     )
     assert r.returncode == 0
-    out_path = Path(r.stdout.split(":")[-1].strip())
+    out_path = _parse_output_path(r.stdout)
     assert (out_path / "recording.mp4").exists()
 
     info = _ffprobe(out_path / "recording.mp4")
@@ -437,15 +445,13 @@ def test_recording_with_even_vertical_layout(tmp_path):
 def test_display_auto_increment(tmp_path):
     """Running two recordings simultaneously uses different displays."""
     path = FIXTURES / "single_pane.yaml"
-    out_a = str(tmp_path / "a")
-    out_b = str(tmp_path / "b")
 
     proc_a = subprocess.Popen(
-        CLI + ["run", str(path), "--output", out_a],
+        CLI + ["run", str(path)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     proc_b = subprocess.Popen(
-        CLI + ["run", str(path), "--output", out_b],
+        CLI + ["run", str(path)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
 
