@@ -70,7 +70,7 @@ python -m vuln_recorder run scenario.yaml --dry-run
 python -m vuln_recorder run scenario.yaml
 
 # 指定输出目录
-python -m vuln_recorder run scenario.yaml --output /tmp/my-recording
+python -m vuln_recorder run scenario.yaml
 ```
 
 ### 输出结构
