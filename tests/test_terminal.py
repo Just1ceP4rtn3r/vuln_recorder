@@ -292,3 +292,39 @@ def test_four_pane_titles(mock_popen, mock_run, mock_sleep):
         cmd = call[0][0]
         titles_set.add(cmd[-1])
     assert titles_set == {'tl', 'tr', 'bl', 'br'}
+
+
+@patch('vuln_recorder.terminal.subprocess.run')
+def test_capture_pane_returns_stripped_output(mock_run):
+    mock_run.return_value = MagicMock(returncode=0, stdout="line1\nline2\n\n\n")
+
+    term = TerminalOrchestrator(":99", "test-session", [{'name': 'a'}], "custom")
+    term._pane_map = {'a': '1'}
+
+    result = term.capture_pane('a')
+
+    mock_run.assert_called_once_with(
+        ["tmux", "-L", "vr-test-session", "capture-pane",
+         "-t", "test-session.1", "-p", "-S", "-100"],
+        capture_output=True, text=True,
+    )
+    assert result == "line1\nline2"
+
+
+def test_capture_pane_unknown_pane_raises():
+    import pytest
+    term = TerminalOrchestrator(":99", "test-session", [{'name': 'a'}], "custom")
+    term._pane_map = {'a': '1'}
+    with pytest.raises(ValueError, match="Unknown pane: 'nonexistent'"):
+        term.capture_pane('nonexistent')
+
+
+@patch('vuln_recorder.terminal.subprocess.run')
+def test_capture_pane_empty_output(mock_run):
+    mock_run.return_value = MagicMock(returncode=0, stdout="\n\n\n")
+
+    term = TerminalOrchestrator(":99", "test-session", [{'name': 'a'}], "custom")
+    term._pane_map = {'a': '1'}
+
+    result = term.capture_pane('a')
+    assert result == ""

@@ -61,5 +61,18 @@ class TerminalOrchestrator:
             command, "Enter",
         ))
 
+    def capture_pane(self, pane_name: str) -> str:
+        if pane_name not in self._pane_map:
+            raise ValueError(f"Unknown pane: '{pane_name}'. Available: {list(self._pane_map.keys())}")
+        result = subprocess.run(
+            self._tmux(
+                "capture-pane",
+                "-t", f"{self.session_name}.{self._pane_map[pane_name]}",
+                "-p", "-S", "-100",
+            ),
+            capture_output=True, text=True,
+        )
+        return result.stdout.rstrip()
+
     def destroy_session(self):
         subprocess.run(self._tmux("kill-session", "-t", self.session_name))
