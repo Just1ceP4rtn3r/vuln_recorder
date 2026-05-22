@@ -19,7 +19,7 @@ class TerminalOrchestrator:
             "xterm", "-display", self.display,
             "-maximized", "-fa", "Monospace", "-fs", "14",
             "-e", "tmux", "-L", self._socket_name,
-            "new-session", "-s", self.session_name,
+            "new-session", "-s", self.session_name, "/bin/bash",
         ])
         for _ in range(50):
             result = subprocess.run(
@@ -31,6 +31,8 @@ class TerminalOrchestrator:
             time.sleep(0.1)
         else:
             raise RuntimeError(f"Timed out waiting for tmux session '{self.session_name}'")
+
+        subprocess.run(self._tmux("set-option", "-t", self.session_name, "default-shell", "/bin/bash"))
 
         for i in range(1, len(self.panes)):
             subprocess.run(self._tmux("split-window", "-h", "-t", self.session_name))
