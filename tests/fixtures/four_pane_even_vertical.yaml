@@ -1,0 +1,32 @@
+name: "Four Pane Even Vertical"
+description: "Smoke test with four panes even-vertical layout"
+
+display:
+  width: 1024
+  height: 768
+
+tmux:
+  session_name: "smoke-four-even-vt"
+  layout: "even-vertical"
+  panes:
+    - name: "row-1"
+    - name: "row-2"
+    - name: "row-3"
+    - name: "row-4"
+
+steps:
+  - pane: "row-1"
+    command: "# === Even Vertical ==="
+    wait: 1
+  - pane: "row-1"
+    command: "echo 'Row 1'"
+    wait: 1
+  - pane: "row-2"
+    command: "echo 'Row 2'"
+    wait: 1
+  - pane: "row-3"
+    command: "echo 'Row 3'"
+    wait: 1
+  - pane: "row-4"
+    command: "echo 'Row 4'"
+    wait: 1

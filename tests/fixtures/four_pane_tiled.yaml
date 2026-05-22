@@ -1,0 +1,32 @@
+name: "Four Pane Tiled"
+description: "Smoke test with four panes tiled layout"
+
+display:
+  width: 1024
+  height: 768
+
+tmux:
+  session_name: "smoke-four-tiled"
+  layout: "tiled"
+  panes:
+    - name: "top-left"
+    - name: "top-right"
+    - name: "bottom-left"
+    - name: "bottom-right"
+
+steps:
+  - pane: "top-left"
+    command: "# === Tiled ==="
+    wait: 1
+  - pane: "top-left"
+    command: "echo 'Top Left'"
+    wait: 1
+  - pane: "top-right"
+    command: "echo 'Top Right'"
+    wait: 1
+  - pane: "bottom-left"
+    command: "echo 'Bottom Left'"
+    wait: 1
+  - pane: "bottom-right"
+    command: "echo 'Bottom Right'"
+    wait: 1

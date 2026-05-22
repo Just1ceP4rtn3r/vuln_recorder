@@ -76,20 +76,20 @@ def test_load_missing_display_subfield(tmp_path):
         s.load()
 
 
-def test_load_missing_tmux_subfield(tmp_path):
+def test_load_default_layout(tmp_path):
     data = {
         'name': 'Test',
         'description': 'desc',
         'display': {'width': 1920, 'height': 1080},
-        'tmux': {'session_name': 's'},
+        'tmux': {'session_name': 's', 'panes': [{'name': 'a'}]},
         'steps': [],
     }
-    yaml_file = tmp_path / 'bad.yaml'
+    yaml_file = tmp_path / 'test.yaml'
     with open(yaml_file, 'w') as f:
         yaml.dump(data, f)
     s = Scenario(str(yaml_file))
-    with pytest.raises(ValueError, match="tmux.layout"):
-        s.load()
+    result = s.load()
+    assert result['tmux']['layout'] == 'main-horizontal'
 
 
 def test_load_invalid_pane_reference(tmp_path):

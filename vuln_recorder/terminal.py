@@ -39,6 +39,9 @@ class TerminalOrchestrator:
         if self.layout != "custom":
             subprocess.run(self._tmux("select-layout", "-t", self.session_name, self.layout))
 
+        subprocess.run(self._tmux("set-option", "-t", self.session_name, "pane-border-status", "top"))
+        subprocess.run(self._tmux("set-option", "-t", self.session_name, "pane-border-format", " #{pane_title} "))
+
         result = subprocess.run(
             self._tmux("list-panes", "-t", self.session_name, "-F", "#{pane_index}"),
             capture_output=True, text=True,
@@ -46,6 +49,8 @@ class TerminalOrchestrator:
         pane_indices = [line for line in result.stdout.strip().split('\n') if line]
         for i, pane in enumerate(self.panes):
             self._pane_map[pane['name']] = pane_indices[i]
+        for pane_name, pane_idx in self._pane_map.items():
+            subprocess.run(self._tmux("select-pane", "-t", f"{self.session_name}.{pane_idx}", "-T", pane_name))
 
     def send_keys(self, pane_name: str, command: str):
         if pane_name not in self._pane_map:

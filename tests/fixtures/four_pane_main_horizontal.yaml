@@ -1,0 +1,32 @@
+name: "Four Pane Main Horizontal"
+description: "Smoke test with four panes main-horizontal layout"
+
+display:
+  width: 1024
+  height: 768
+
+tmux:
+  session_name: "smoke-four-main-hz"
+  layout: "main-horizontal"
+  panes:
+    - name: "top"
+    - name: "bottom-left"
+    - name: "bottom-right"
+    - name: "bottom-center"
+
+steps:
+  - pane: "top"
+    command: "# === Main Horizontal ==="
+    wait: 1
+  - pane: "top"
+    command: "echo 'Top'"
+    wait: 1
+  - pane: "bottom-left"
+    command: "echo 'Bottom Left'"
+    wait: 1
+  - pane: "bottom-right"
+    command: "echo 'Bottom Right'"
+    wait: 1
+  - pane: "bottom-center"
+    command: "echo 'Bottom Center'"
+    wait: 1

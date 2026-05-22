@@ -1,0 +1,32 @@
+name: "Four Pane Even Horizontal"
+description: "Smoke test with four panes even-horizontal layout"
+
+display:
+  width: 1024
+  height: 768
+
+tmux:
+  session_name: "smoke-four-even-hz"
+  layout: "even-horizontal"
+  panes:
+    - name: "col-1"
+    - name: "col-2"
+    - name: "col-3"
+    - name: "col-4"
+
+steps:
+  - pane: "col-1"
+    command: "# === Even Horizontal ==="
+    wait: 1
+  - pane: "col-1"
+    command: "echo 'Col 1'"
+    wait: 1
+  - pane: "col-2"
+    command: "echo 'Col 2'"
+    wait: 1
+  - pane: "col-3"
+    command: "echo 'Col 3'"
+    wait: 1
+  - pane: "col-4"
+    command: "echo 'Col 4'"
+    wait: 1

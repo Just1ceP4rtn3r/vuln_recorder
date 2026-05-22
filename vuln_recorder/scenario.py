@@ -3,7 +3,7 @@ from pathlib import Path
 
 REQUIRED_TOP_FIELDS = ['name', 'description', 'display', 'tmux', 'steps']
 REQUIRED_DISPLAY_FIELDS = ['width', 'height']
-REQUIRED_TMUX_FIELDS = ['session_name', 'layout', 'panes']
+REQUIRED_TMUX_FIELDS = ['session_name', 'panes']
 REQUIRED_STEP_FIELDS = ['pane', 'command', 'wait']
 
 
@@ -17,6 +17,7 @@ class Scenario:
         errors = Scenario.validate(data)
         if errors:
             raise ValueError(f"Invalid scenario: {'; '.join(errors)}")
+        data['tmux'].setdefault('layout', 'main-horizontal')
         return data
 
     @staticmethod

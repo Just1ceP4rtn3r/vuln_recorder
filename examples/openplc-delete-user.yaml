@@ -1,0 +1,42 @@
+name: "OpenPLC Delete User"
+description: "Demonstrates unauthorized user deletion in OpenPLC web interface"
+
+display:
+  width: 1920
+  height: 1080
+
+tmux:
+  session_name: "openplc-demo"
+  panes:
+    - name: "environment"
+    - name: "attacker"
+    - name: "victim"
+
+steps:
+  - pane: "environment"
+    command: "clear"
+    wait: 1
+  - pane: "environment"
+    command: "printf '\\033[1;36m步骤1: 初始化攻击演示环境\\033[0m'"
+    wait: 5
+  - pane: "environment"
+    command: "printf '\\033[32m步骤2: 环境就绪 — OpenPLC 目标已部署\\033[0m'"
+    wait: 5
+  - pane: "attacker"
+    command: "clear"
+    wait: 1
+  - pane: "attacker"
+    command: "printf '\\033[33m步骤3: 识别目标系统 — 扫描 OpenPLC Web 接口\\033[0m'"
+    wait: 5
+  - pane: "attacker"
+    command: "printf '\\033[31m步骤4: 发现未授权访问漏洞 — 开始利用\\033[0m'"
+    wait: 8
+  - pane: "victim"
+    command: "clear"
+    wait: 1
+  - pane: "victim"
+    command: "printf '\\033[32m步骤5: 目标系统正常运行中\\033[0m'"
+    wait: 5
+  - pane: "victim"
+    command: "printf '\\033[31m步骤6: 警告 — 未授权用户删除操作已执行!\\033[0m'"
+    wait: 8

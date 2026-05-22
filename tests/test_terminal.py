@@ -237,3 +237,58 @@ def test_socket_name_derived_from_session(mock_popen, mock_run, mock_sleep):
 
     term = TerminalOrchestrator(":99", "my-session", [{'name': 'a'}], "custom")
     assert term._socket_name == "vr-my-session"
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2\n3"))
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_pane_titles_are_set(mock_popen, mock_run, mock_sleep):
+    mock_popen.return_value = MagicMock()
+
+    panes = [{'name': 'env'}, {'name': 'attacker'}, {'name': 'victim'}]
+    term = TerminalOrchestrator(":99", "test-session", panes, "custom")
+    term.create_session()
+
+    title_calls = [c for c in mock_run.call_args_list if 'select-pane' in str(c) and '-T' in str(c)]
+    assert len(title_calls) == 3
+    titles_set = set()
+    for call in title_calls:
+        cmd = call[0][0]
+        titles_set.add(cmd[-1])
+    assert titles_set == {'env', 'attacker', 'victim'}
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2\n3\n4"))
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_four_pane_tiled_layout(mock_popen, mock_run, mock_sleep):
+    mock_popen.return_value = MagicMock()
+
+    panes = [{'name': 'tl'}, {'name': 'tr'}, {'name': 'bl'}, {'name': 'br'}]
+    term = TerminalOrchestrator(":99", "test-session", panes, "tiled")
+    term.create_session()
+
+    split_calls = [c for c in mock_run.call_args_list if 'split-window' in str(c)]
+    assert len(split_calls) == 3
+    layout_calls = [c for c in mock_run.call_args_list if 'select-layout' in str(c)]
+    assert len(layout_calls) == 1
+    assert "tiled" in layout_calls[0][0][0]
+
+
+@patch('vuln_recorder.terminal.time.sleep')
+@patch('vuln_recorder.terminal.subprocess.run', side_effect=_mock_run_factory(stdout="1\n2\n3\n4"))
+@patch('vuln_recorder.terminal.subprocess.Popen')
+def test_four_pane_titles(mock_popen, mock_run, mock_sleep):
+    mock_popen.return_value = MagicMock()
+
+    panes = [{'name': 'tl'}, {'name': 'tr'}, {'name': 'bl'}, {'name': 'br'}]
+    term = TerminalOrchestrator(":99", "test-session", panes, "tiled")
+    term.create_session()
+
+    title_calls = [c for c in mock_run.call_args_list if 'select-pane' in str(c) and '-T' in str(c)]
+    assert len(title_calls) == 4
+    titles_set = set()
+    for call in title_calls:
+        cmd = call[0][0]
+        titles_set.add(cmd[-1])
+    assert titles_set == {'tl', 'tr', 'bl', 'br'}

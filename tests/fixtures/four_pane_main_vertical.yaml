@@ -1,0 +1,32 @@
+name: "Four Pane Main Vertical"
+description: "Smoke test with four panes main-vertical layout"
+
+display:
+  width: 1024
+  height: 768
+
+tmux:
+  session_name: "smoke-four-main-vt"
+  layout: "main-vertical"
+  panes:
+    - name: "left"
+    - name: "right-top"
+    - name: "right-middle"
+    - name: "right-bottom"
+
+steps:
+  - pane: "left"
+    command: "# === Main Vertical ==="
+    wait: 1
+  - pane: "left"
+    command: "echo 'Left'"
+    wait: 1
+  - pane: "right-top"
+    command: "echo 'Right Top'"
+    wait: 1
+  - pane: "right-middle"
+    command: "echo 'Right Middle'"
+    wait: 1
+  - pane: "right-bottom"
+    command: "echo 'Right Bottom'"
+    wait: 1
