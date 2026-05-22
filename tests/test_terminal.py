@@ -27,6 +27,11 @@ def test_create_session_starts_xterm_with_tmux(mock_popen, mock_run, mock_sleep)
     assert xterm_cmd[0] == "xterm"
     assert "-display" in xterm_cmd
     assert ":99" in xterm_cmd
+    assert "-maximized" in xterm_cmd
+    assert "-fa" in xterm_cmd
+    assert "Monospace" in xterm_cmd
+    assert "-fs" in xterm_cmd
+    assert "14" in xterm_cmd
     assert "tmux" in xterm_cmd
     assert "-L" in xterm_cmd
     assert "vr-test-session" in xterm_cmd

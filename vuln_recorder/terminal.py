@@ -17,6 +17,7 @@ class TerminalOrchestrator:
     def create_session(self):
         subprocess.Popen([
             "xterm", "-display", self.display,
+            "-maximized", "-fa", "Monospace", "-fs", "14",
             "-e", "tmux", "-L", self._socket_name,
             "new-session", "-s", self.session_name,
         ])
@@ -32,7 +33,7 @@ class TerminalOrchestrator:
             raise RuntimeError(f"Timed out waiting for tmux session '{self.session_name}'")
 
         for i in range(1, len(self.panes)):
-            subprocess.run(self._tmux("split-window", "-t", self.session_name))
+            subprocess.run(self._tmux("split-window", "-h", "-t", self.session_name))
             time.sleep(0.2)
 
         if self.layout != "custom":

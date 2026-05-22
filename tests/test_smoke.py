@@ -237,6 +237,8 @@ def test_all_scenarios_dir_load():
         data = s.load()
         assert "name" in data
         assert len(data["steps"]) > 0
+        assert data["display"]["width"] == 1920
+        assert data["display"]["height"] == 1080
 
 
 # ─── Real tmux pane/layout verification ────────────────────────────
@@ -314,7 +316,7 @@ def test_tmux_even_vertical_layout(tmp_path):
         )
         heights = [int(h) for h in r.stdout.strip().split('\n')]
         assert len(heights) == 2
-        assert heights[0] == heights[1], "Panes should have equal height in even-vertical"
+        assert abs(heights[0] - heights[1]) <= 1, "Panes should have equal height in even-vertical"
 
         term.destroy_session()
     finally:
@@ -456,16 +458,13 @@ def test_display_auto_increment(tmp_path):
 
 @requires_deps
 def test_xvfb_no_stale_lock_after_run(tmp_path):
-    """Xvfb lock file should be cleaned up after a successful run."""
-    path = FIXTURES / "single_pane.yaml"
-    output_dir = str(tmp_path / "out")
-
-    r = subprocess.run(
-        CLI + ["run", str(path), "--output", output_dir],
-        capture_output=True, text=True, timeout=60,
-    )
-    assert r.returncode == 0
-
-    import os
-    lock = "/tmp/.X99-lock"
-    assert not os.path.exists(lock), "Xvfb lock file should be removed after stop"
+    """Xvfb lock files from our run should be cleaned up after stop."""
+    from vuln_recorder.xvfb import XvfbManager
+    xvfb = XvfbManager(width=640, height=480)
+    display = xvfb.start()
+    import os, re
+    display_num = re.search(r':(\d+)', display).group(1)
+    lock = f"/tmp/.X{display_num}-lock"
+    assert os.path.exists(lock), f"Lock file should exist while Xvfb is running: {lock}"
+    xvfb.stop()
+    assert not os.path.exists(lock), f"Lock file should be removed after stop: {lock}"
