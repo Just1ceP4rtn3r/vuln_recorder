@@ -237,6 +237,47 @@ tiled (4 panes)                                          │        │    3    
 
 5. **以 `#` 开头的命令**作为注释显示在终端中（shell 不执行），适合做步骤说明。
 
+	6. **多行代码保存为脚本执行。** 当命令包含循环、heredoc、多行 Python 代码或复杂逻辑时，不要试图压缩为单行 YAML 字符串。将多行代码保存为独立的 `.sh` 脚本文件，然后在 YAML 中直接通过 `bash` 执行：
+
+	   ```yaml
+	   # 不推荐 ✗ — 将复杂逻辑塞进 YAML 单行，难以维护且易出错
+	   - pane: "attacker"
+	     command: "for i in 1 2 3; do echo '=== Iteration ==='; python3 -c '...几百行...'; sleep 5; done"
+	     wait: 60
+
+	   # 推荐 ✓ — 将多行代码保存为脚本文件，在 YAML 中引用
+	   - pane: "attacker"
+	     command: "bash /home/user/scripts/exploit-loop.sh"
+	     wait: 60
+	   ```
+
+	   脚本文件示例 (`exploit-loop.sh`)：
+
+	   ```bash
+	   #!/bin/bash
+	   for i in 1 2 3; do
+	       echo "=========================================="
+	       echo "=== Iteration $i/3 ==="
+	       echo "=========================================="
+	       ./venvs/runtime/bin/python3 << 'PYEOF'
+	   import requests, json
+	   # 复杂的 Python 利用代码 ...
+	   PYEOF
+	       sleep 5
+	   done
+	   ```
+
+	   如果脚本必须在录制目标机器上动态生成，先用一步写入文件，再用一步执行：
+
+	   ```yaml
+	   - pane: "attacker"
+	     command: "cat > /tmp/exploit.sh << 'EOF'\n#!/bin/bash\necho 'dynamic script'\nEOF"
+	     wait: 2
+	   - pane: "attacker"
+	     command: "bash /tmp/exploit.sh"
+	     wait: 30
+	   ```
+
 ### 终端输出最佳实践
 
 录制时终端中显示的内容直接构成最终视频的信息传达。请遵循以下准则：
