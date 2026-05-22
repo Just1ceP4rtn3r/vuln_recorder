@@ -57,7 +57,6 @@ class Engine:
             output_path = str(run_dir / "recording.mp4")
             self.recorder = Recorder(display, output_path, resolution)
             self.recorder.start()
-            time.sleep(1)
 
             tmux_cfg = data['tmux']
             self.terminal = TerminalOrchestrator(
@@ -103,7 +102,7 @@ class Engine:
 
     def check_dependencies(self):
         missing = []
-        for tool in ['Xvfb', 'ffmpeg', 'xterm', 'tmux']:
+        for tool in ['Xvfb', 'ffmpeg', 'xterm', 'tmux', 'xdpyinfo']:
             if not shutil.which(tool):
                 missing.append(tool)
         if missing:

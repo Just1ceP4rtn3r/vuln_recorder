@@ -30,7 +30,17 @@ class XvfbManager:
             "-ac", "+extension", "GLX", "+render", "-noreset",
         ]
         self._process = subprocess.Popen(cmd)
-        time.sleep(0.5)
+        for _ in range(50):
+            result = subprocess.run(
+                ["xdpyinfo", "-display", self.display],
+                capture_output=True,
+            )
+            if result.returncode == 0:
+                break
+            time.sleep(0.1)
+        else:
+            self.stop()
+            raise RuntimeError(f"Xvfb display {self.display} not ready after 5s")
         return self.display
 
     def stop(self):
