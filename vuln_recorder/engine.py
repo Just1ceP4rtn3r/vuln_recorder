@@ -1,7 +1,10 @@
 import atexit
 import shutil
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+
+import yaml
 
 from .scenario import Scenario
 from .xvfb import XvfbManager
@@ -10,9 +13,8 @@ from .terminal import TerminalOrchestrator
 
 
 class Engine:
-    def __init__(self, scenario_path: str, output_dir: str = "output"):
+    def __init__(self, scenario_path: str):
         self.scenario_path = scenario_path
-        self.output_dir = Path(output_dir)
         self.xvfb = None
         self.recorder = None
         self.terminal = None
@@ -23,8 +25,8 @@ class Engine:
 
         self.check_dependencies()
 
-        slug = data.get('output_dir', data['name'].lower().replace(' ', '-'))
-        run_dir = self.output_dir / slug
+        scenario_dir = Path(self.scenario_path).resolve().parent
+        run_dir = scenario_dir / "record"
         run_dir.mkdir(parents=True, exist_ok=True)
 
         shutil.copy(self.scenario_path, run_dir / "scenario.yaml")
@@ -52,9 +54,26 @@ class Engine:
             )
             self.terminal.create_session()
 
-            for step in data['steps']:
+            captured_steps = []
+            for i, step in enumerate(data['steps']):
                 self.terminal.send_keys(step['pane'], step['command'])
                 time.sleep(step['wait'])
+                output = self.terminal.capture_pane(step['pane'])
+                captured_steps.append({
+                    'step': i,
+                    'pane': step['pane'],
+                    'command': step['command'],
+                    'output': output,
+                })
+
+            outputs_data = {
+                'scenario': data['name'],
+                'captured_at': datetime.now(timezone.utc).isoformat(),
+                'steps': captured_steps,
+            }
+            outputs_file = run_dir / "scenario-outputs.yaml"
+            with open(outputs_file, 'w') as f:
+                yaml.dump(outputs_data, f, default_flow_style=False, allow_unicode=True)
 
             self.recorder.stop()
             self.xvfb.stop()
