@@ -19,7 +19,7 @@ class TerminalOrchestrator:
             "xterm", "-display", self.display,
             "-maximized", "-fa", "Monospace", "-fs", "12",
             "-e", "tmux", "-L", self._socket_name,
-            "new-session", "-s", self.session_name, "/bin/bash",
+            "new-session", "-s", self.session_name, "-c", "/tmp", "/bin/bash",
         ])
         for _ in range(50):
             result = subprocess.run(
@@ -35,7 +35,7 @@ class TerminalOrchestrator:
         subprocess.run(self._tmux("set-option", "-t", self.session_name, "default-shell", "/bin/bash"))
 
         for i in range(1, len(self.panes)):
-            subprocess.run(self._tmux("split-window", "-h", "-t", self.session_name))
+            subprocess.run(self._tmux("split-window", "-h", "-c", "/tmp", "-t", self.session_name))
             time.sleep(0.2)
 
         if self.layout != "custom":
