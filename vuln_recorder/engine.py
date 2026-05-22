@@ -19,6 +19,18 @@ class Engine:
         self.recorder = None
         self.terminal = None
 
+    @staticmethod
+    def _is_display_command(command: str) -> bool:
+        return command.strip().startswith('printf')
+
+    @staticmethod
+    def _append_newlines(command: str, count: int = 3) -> str:
+        stripped = command.strip()
+        if stripped.endswith("'"):
+            pos = stripped.rfind("'")
+            return stripped[:pos] + '\\n' * count + stripped[pos:]
+        return stripped
+
     def run(self) -> str:
         scenario = Scenario(self.scenario_path)
         data = scenario.load()
@@ -56,8 +68,14 @@ class Engine:
 
             captured_steps = []
             for i, step in enumerate(data['steps']):
-                self.terminal.send_keys(step['pane'], step['command'])
+                is_display = self._is_display_command(step['command'])
+                if is_display:
+                    self.terminal.set_pane_style(step['pane'], 'bg=colour248')
+                command = self._append_newlines(step['command']) if is_display else step['command']
+                self.terminal.send_keys(step['pane'], command)
                 time.sleep(step['wait'])
+                if is_display:
+                    self.terminal.set_pane_style(step['pane'], 'default')
                 output = self.terminal.capture_pane(step['pane'])
                 captured_steps.append({
                     'step': i,

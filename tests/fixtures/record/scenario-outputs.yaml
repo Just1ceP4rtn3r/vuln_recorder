@@ -1,0 +1,30 @@
+captured_at: '2026-05-22T07:13:18.376003+00:00'
+scenario: Single Pane Test
+steps:
+- command: '# === Smoke Test ==='
+  output: "# === Smoke Test ===\n# === Smoke Test ===\n[oh-my-zsh] Random theme 'superjarin'\
+    \ loaded\n[] ~/Documents/vuln-tools/vuln-recorder # === Smoke T\nest ===\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ # === Smoke T\nest ===\n[] ~/Documents/vuln-tools/vuln-recorder <main> ✗ echo\n\
+    \ '"
+  pane: shell
+  step: 0
+- command: echo 'Hello from single pane'
+  output: "# === Smoke Test ===\n# === Smoke Test ===\n[oh-my-zsh] Random theme 'superjarin'\
+    \ loaded\n[] ~/Documents/vuln-tools/vuln-recorder # === Smoke T\nest ===\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ # === Smoke T\nest ===\n[] ~/Documents/vuln-tools/vuln-recorder <main> ✗ echo\n\
+    \ 'Hello from single pane'\nHello from single pane\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ <main> ✗ echo\n 'Hello from single pane'\nHello from single pane\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ <main> ✗ date"
+  pane: shell
+  step: 1
+- command: date
+  output: "# === Smoke Test ===\n# === Smoke Test ===\n[oh-my-zsh] Random theme 'superjarin'\
+    \ loaded\n[] ~/Documents/vuln-tools/vuln-recorder # === Smoke T\nest ===\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ # === Smoke T\nest ===\n[] ~/Documents/vuln-tools/vuln-recorder <main> ✗ echo\n\
+    \ 'Hello from single pane'\nHello from single pane\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ <main> ✗ echo\n 'Hello from single pane'\nHello from single pane\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ <main> ✗ date\n\n2026年 05月 22日 星期五 15:13:17 CST\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ <main> ✗ date\n\n2026年 05月 22日 星期五 15:13:17 CST\n[] ~/Documents/vuln-tools/vuln-recorder\
+    \ <main> ✗"
+  pane: shell
+  step: 2

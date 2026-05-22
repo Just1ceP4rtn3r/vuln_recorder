@@ -17,7 +17,7 @@ class TerminalOrchestrator:
     def create_session(self):
         subprocess.Popen([
             "xterm", "-display", self.display,
-            "-maximized", "-fa", "Monospace", "-fs", "14",
+            "-maximized", "-fa", "Monospace", "-fs", "12",
             "-e", "tmux", "-L", self._socket_name,
             "new-session", "-s", self.session_name, "/bin/bash",
         ])
@@ -75,6 +75,15 @@ class TerminalOrchestrator:
             capture_output=True, text=True,
         )
         return result.stdout.rstrip()
+
+    def set_pane_style(self, pane_name: str, style: str):
+        if pane_name not in self._pane_map:
+            raise ValueError(f"Unknown pane: '{pane_name}'. Available: {list(self._pane_map.keys())}")
+        subprocess.run(self._tmux(
+            "set-option", "-p",
+            "-t", f"{self.session_name}.{self._pane_map[pane_name]}",
+            "window-style", style,
+        ))
 
     def destroy_session(self):
         subprocess.run(self._tmux("kill-session", "-t", self.session_name))

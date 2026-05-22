@@ -294,7 +294,7 @@ examples/
 python -m vuln_recorder run examples/openplc-delete-user.yaml --dry-run
 
 # 录制
-python -m vuln_recorder run examples/openplc-delete-user.yaml --output /tmp/demo
+python -m vuln_recorder run examples/openplc-delete-user.yaml
 ```
 
 更多场景文件位于 `scenarios/`，测试用场景位于 `tests/fixtures/`。
