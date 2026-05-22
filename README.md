@@ -204,21 +204,38 @@ tiled (4 panes)                                          │        │    3    
 | `command` | string | 是 | 要执行的命令，以 `Enter` 发送到 tmux 窗格 |
 | `wait` | int/float | 是 | 执行后等待秒数，用于等待命令输出完成后再进入下一步 |
 
-**命令技巧：**
+**命令规则（必须遵守）：**
 
-- 以 `#` 开头的命令会作为注释显示在终端中（shell 不执行），适合做步骤说明
-- 命令会通过 `tmux send-keys` 发送，支持管道、变量替换等 shell 特性
-- 多行命令使用 YAML 的 `>-` 折叠标量：
+命令通过 `tmux send-keys` 逐字符输入到终端，以下规则确保命令在录屏中正确执行：
 
-```yaml
-steps:
-  - pane: "attacker"
-    command: >-
-      curl -sk -X POST https://target/api/login
-      -H 'Content-Type: application/json'
-      -d '{"username":"admin","password":"pass"}'
-    wait: 3
-```
+1. **禁止 `>-` 折叠标量。** `>-` 将多行合并为单行，导致命令过长在 tmux 终端中截断或换行错乱。每个 `command` 必须是单行短字符串（< 200 字符）。
+
+2. **每步必须自包含。** 每个步骤是独立的 `tmux send-keys` 调用，不在同一 shell 会话中。步骤 A 中设置的 shell 变量（`TOKEN=xxx`）在步骤 B 中不可用。跨步传递数据必须用文件：
+   ```yaml
+   # 步骤A: 保存到文件
+   - pane: "environment"
+     command: "curl -sk ... | python3 -c 'import sys,json;print(json.load(sys.stdin)[\"access_token\"])' > /tmp/token.txt"
+     wait: 4
+   # 步骤B: 从文件读取（在同一条命令内完成读取和使用）
+   - pane: "attacker"
+     command: "OT=$(cat /tmp/token.txt) && curl -sk -H \"Authorization: Bearer $OT\" https://target/api/ping"
+     wait: 3
+   ```
+
+3. **长命令必须拆分。** curl 命令含多个 -H 和 JSON body 时，用 Python 脚本文件或拆为多个步骤。如果必须用 curl，将 token 读写和请求合并到一条短命令中。
+
+4. **禁止 `killall` 杀掉录制进程自身。** vuln_recorder 以 python3 运行，`killall -9 python3` 会杀死录制工具自身导致录屏失败（exit 137）。清理旧进程必须用精确匹配：
+   ```yaml
+   # 错误 — 会杀掉 vuln_recorder 自身
+   - pane: "environment"
+     command: "sudo killall -9 plc_main python3 2>/dev/null; sleep 2"
+
+   # 正确 — 精确匹配目标进程
+   - pane: "environment"
+     command: "sudo killall -9 plc_main 2>/dev/null; sudo pkill -9 -f 'webserver.app' 2>/dev/null; sleep 2"
+   ```
+
+5. **以 `#` 开头的命令**作为注释显示在终端中（shell 不执行），适合做步骤说明。
 
 ### 终端输出最佳实践
 
