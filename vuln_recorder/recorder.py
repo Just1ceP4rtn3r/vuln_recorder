@@ -20,6 +20,8 @@ class Recorder:
             "-framerate", str(self.fps),
             "-i", self.display,
             "-c:v", "libx264",
+            "-profile:v", "high",
+            "-pix_fmt", "yuv420p",
             "-preset", "medium",
             "-crf", "18",
             self.output_path,
